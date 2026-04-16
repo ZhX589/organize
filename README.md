@@ -11,7 +11,7 @@
 - 🧹 自动清理临时文件（temp目录、_.tmp、_.cache等）
 - 🔍 模拟运行模式（--dry-run）
 - 📝 规则管理：添加、删除、查看、编辑
-- 📦 支持打包为 deb、rpm 和 AUR 安装
+- 📦 支持打包为 deb 和 AUR 安装
 - 🖥️ 跨平台 Linux（仅依赖 bash 和 coreutils）
 
 ## 安装
@@ -20,12 +20,6 @@
 
 ```bash
 sudo dpkg -i organize_2.0.0_all.deb
-```
-
-### Fedora / RHEL
-
-```bash
-sudo rpm -ivh organize-2.0.0-1.el7.noarch.rpm
 ```
 
 ### Arch Linux (AUR)
@@ -86,7 +80,6 @@ psd,psb:图片/Photoshop
 
 ```bash
 make deb      # 构建 DEB 包
-make rpm      # 构建 RPM 包
 make clean    # 清理构建文件
 ```
 

@@ -2,13 +2,12 @@ PREFIX    ?= /usr/local
 BINDIR    ?= $(PREFIX)/bin
 MANDIR    ?= $(PREFIX)/share/man/man1
 DATADIR   ?= $(PREFIX)/share/organize
-CONFIGDIR ?= $(DATADIR)
 
 VERSION := 2.0.2
 SCRIPT   := src/organize.sh
 OUTPUT   := build/organize.sh
 
-.PHONY: all install uninstall clean distclean deb rpm
+.PHONY: all install uninstall clean distclean deb
 
 all: $(OUTPUT)
 
@@ -31,7 +30,7 @@ clean:
 	rm -rf build
 
 distclean: clean
-	rm -f organize_*.deb organize-*.rpm
+	rm -f organize_*.deb
 
 deb: $(OUTPUT)
 	mkdir -p debian/usr/bin debian/usr/share/organize debian/usr/share/man/man1
@@ -40,19 +39,6 @@ deb: $(OUTPUT)
 	install -m644 man/organize.1 debian/usr/share/man/man1/
 	mkdir -p debian/DEBIAN
 	cp deb/control debian/DEBIAN/
-	cp deb/postinst debian/DEBIAN/ 2>/dev/null || true
 	chmod 755 debian/DEBIAN/postinst 2>/dev/null || true
 	dpkg-deb --build debian organize_$(VERSION)_all.deb
 	rm -rf debian
-
-rpm: $(OUTPUT)
-	mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-	cp $(OUTPUT) rpmbuild/SOURCES/organize.sh
-	cp config/rules.conf.example rpmbuild/SOURCES/
-	cp man/organize.1 rpmbuild/SOURCES/
-	rpmbuild -bb rpm/organize.spec \
-		--define "_topdir $(PWD)/rpmbuild" \
-		--define "version $(VERSION)" \
-		--define "_rpmdir $(PWD)"
-	mv *.rpm . 2>/dev/null || true
-	rm -rf rpmbuild

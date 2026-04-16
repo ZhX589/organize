@@ -8,13 +8,12 @@ on:
 jobs:
   build-deb:
     runs-on: ubuntu-latest
-    container: debian:latest
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
         run: |
-          apt-get update
-          apt-get install -y make dpkg-dev
+          sudo apt-get update
+          sudo apt-get install -y make
       - name: Build deb
         run: make deb
       - name: Upload deb artifact
@@ -23,24 +22,8 @@ jobs:
           name: organize-deb
           path: organize_*.deb
 
-  build-rpm:
-    runs-on: ubuntu-latest
-    container: fedora:latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install build dependencies
-        run: |
-          dnf install -y make rpm-build
-      - name: Build rpm
-        run: make rpm
-      - name: Upload rpm artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: organize-rpm
-          path: organize-*.rpm
-
   create-release:
-    needs: [build-deb, build-rpm]
+    needs: [build-deb]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -51,5 +34,4 @@ jobs:
         with:
           files: |
             organize-deb/organize_*.deb
-            organize-rpm/organize-*.rpm
           generate_release_notes: true
