@@ -3,30 +3,25 @@ name: Build and Release
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 jobs:
-  # 构建 DEB 包
   build-deb:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y make
-
       - name: Build deb
         run: make deb
-
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4
         with:
           name: organize-deb
           path: organize_*.deb
 
-  # 创建 GitHub Release
   create-release:
     needs: [build-deb]
     runs-on: ubuntu-latest
@@ -37,7 +32,6 @@ jobs:
         with:
           name: organize-deb
           path: ./artifacts
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -45,32 +39,43 @@ jobs:
             ./artifacts/organize_*.deb
           generate_release_notes: true
 
-  # 自动推送 AUR
   publish-aur:
     needs: [create-release]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Extract version
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Prepare PKGBUILD for AUR
+      
+      - name: Prepare PKGBUILD and .SRCINFO
         run: |
-          # 复制 PKGBUILD 到工作目录
           cp aur/PKGBUILD .
-
-          # 替换版本号
           sed -i "s/pkgver=.*/pkgver=${{ steps.version.outputs.VERSION }}/" PKGBUILD
+          
+          cat > .SRCINFO << EOF
+pkgbase = organize-git
+	pkgdesc = File organizer by extension - Git version
+	pkgver = ${{ steps.version.outputs.VERSION }}
+	pkgrel = 1
+	url = https://github.com/ZhX589/organize
+	arch = any
+	license = MIT
+	makedepends = git
+	makedepends = make
+	depends = bash
+	depends = coreutils
+	source = organize-git::git+https://github.com/ZhX589/organize.git
+	sha256sums = SKIP
+	provides = organize
+	conflicts = organize
+	conflicts = organize-bin
 
-          # 更新 source 中的版本号（如果使用 tag）
-          sed -i "s|organize/archive/.*.tar.gz|organize/archive/v${{ steps.version.outputs.VERSION }}.tar.gz|" PKGBUILD
-
-          # 生成 .SRCINFO
-          makepkg --printsrcinfo > .SRCINFO
-
+pkgname = organize-git
+EOF
+      
       - name: Publish to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v3
         with:
