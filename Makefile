@@ -3,7 +3,7 @@ BINDIR    ?= $(PREFIX)/bin
 MANDIR    ?= $(PREFIX)/share/man/man1
 DATADIR   ?= $(PREFIX)/share/organize
 
-VERSION := 2.0.7
+VERSION := 2.0.8
 SCRIPT   := src/organize.sh
 OUTPUT   := build/organize.sh
 

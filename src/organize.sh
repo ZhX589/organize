@@ -3,11 +3,11 @@ set -euo pipefail
 
 # ============================================
 # organize - 文件自动整理工具
-# 版本: 2.0.7
+# 版本: 2.0.8
 # ============================================
 
 readonly SCRIPT_NAME="organize"
-readonly VERSION="2.0.7"
+readonly VERSION="2.0.8"
 
 # 配置文件路径（遵循 XDG 规范）
 : "${XDG_CONFIG_HOME:=$HOME/.config}"
@@ -287,17 +287,30 @@ organize_directory() {
         printf "%b⚠️  模拟运行模式 - 不会实际移动文件%b\n\n" "${YELLOW:-}" "${NC:-}"
     fi
 
-    # 收集所有需要创建的目标目录（使用普通数组避免关联数组为空的问题）
+    # 收集所有需要创建的目标目录 - 修复：正确遍历关联数组
     local dirs_to_create=()
-    for dest_dir in "${RULES[@]}"; do
-        if [[ ! -d "$dest_dir" ]]; then
-            dirs_to_create+=("$dest_dir")
-        fi
-    done
+    if [[ ${#RULES[@]} -gt 0 ]]; then
+        for key in "${!RULES[@]}"; do
+            local dest_dir="${RULES[$key]}"
+            if [[ -n "$dest_dir" ]] && [[ ! -d "$dest_dir" ]]; then
+                dirs_to_create+=("$dest_dir")
+            fi
+        done
+    fi
 
+    # 去重
     if [[ ${#dirs_to_create[@]} -gt 0 ]]; then
-        log_info "创建必要目录..."
+        local -A unique_map
+        local unique_dirs=()
         for dir in "${dirs_to_create[@]}"; do
+            if [[ -z "${unique_map[$dir]:-}" ]]; then
+                unique_map["$dir"]=1
+                unique_dirs+=("$dir")
+            fi
+        done
+        
+        log_info "创建必要目录..."
+        for dir in "${unique_dirs[@]}"; do
             if [[ "$DRY_RUN" == false ]]; then
                 mkdir -p "$dir"
                 printf "  %b✓%b %s\n" "${GREEN:-}" "${NC:-}" "$dir"
@@ -325,6 +338,7 @@ organize_directory() {
 
     for file in "${files[@]}"; do
         local filename=$(basename "$file")
+        # 跳过隐藏文件
         [[ "$filename" == .* ]] && continue
 
         local ext="${filename##*.}"
@@ -334,7 +348,11 @@ organize_directory() {
             ext="${ext,,}"
         fi
 
-        local dest_dir="${RULES[$ext]}"
+        local dest_dir=""
+        if [[ -n "$ext" ]] && [[ -v "RULES[$ext]" ]]; then
+            dest_dir="${RULES[$ext]}"
+        fi
+        
         if [[ -n "$dest_dir" ]]; then
             local file_size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo 0)
             total_size=$((total_size + file_size))
@@ -348,12 +366,12 @@ organize_directory() {
 
             printf "  %b→%b %s (.%s → %b%s%b)\n" "${GREEN:-}" "${NC:-}" "$filename" "$ext" "${BLUE:-}" "$dest_dir" "${NC:-}"
             if [[ "$DRY_RUN" == false ]]; then
-                mv "$file" "$dest_dir/" && {
+                if mv "$file" "$dest_dir/"; then
                     ((moved_count++))
                     log_to_file "MOVED: $filename -> $dest_dir"
-                } || {
+                else
                     log_error "移动失败: $filename"
-                }
+                fi
             else
                 ((moved_count++))
             fi
