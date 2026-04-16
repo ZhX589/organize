@@ -3,11 +3,11 @@ set -euo pipefail
 
 # ============================================
 # organize - 文件自动整理工具
-# 版本: @@VERSION@@
+# 版本: 2.0.6
 # ============================================
 
 readonly SCRIPT_NAME="organize"
-readonly VERSION="${VERSION:-2.0.5}"
+readonly VERSION="2.0.6"
 
 # 配置文件路径（遵循 XDG 规范）
 : "${XDG_CONFIG_HOME:=$HOME/.config}"
@@ -18,15 +18,28 @@ readonly LOG_DIR="$XDG_STATE_HOME/$SCRIPT_NAME"
 readonly LOG_FILE="$LOG_DIR/organize.log"
 readonly DEFAULT_RULES_SYSTEM="/usr/share/$SCRIPT_NAME/rules.conf.default"
 
-# 颜色定义（输出到终端时启用）
-if [[ -t 1 ]]; then
-    readonly RED='\033[0;31m'
-    readonly GREEN='\033[0;32m'
-    readonly YELLOW='\033[1;33m'
-    readonly BLUE='\033[0;34m'
-    readonly PURPLE='\033[0;35m'
-    readonly CYAN='\033[0;36m'
-    readonly NC='\033[0m'
+# 颜色定义 - 修复：只在输出到终端时启用，并且使用 tput 或直接检测
+# 注意：某些终端环境下 echo -e 可能不支持 \033，所以改用 tput 或更可靠的方式
+if [[ -t 1 ]] && [[ "$TERM" != "" ]] && [[ "$TERM" != "dumb" ]]; then
+    # 检查是否支持颜色
+    if command -v tput &> /dev/null && tput colors &> /dev/null && [[ $(tput colors) -ge 8 ]]; then
+        readonly RED=$(tput setaf 1)
+        readonly GREEN=$(tput setaf 2)
+        readonly YELLOW=$(tput setaf 3)
+        readonly BLUE=$(tput setaf 4)
+        readonly PURPLE=$(tput setaf 5)
+        readonly CYAN=$(tput setaf 6)
+        readonly NC=$(tput sgr0)
+    else
+        # 回退到 ANSI 转义序列（大部分现代终端支持）
+        readonly RED='\033[0;31m'
+        readonly GREEN='\033[0;32m'
+        readonly YELLOW='\033[1;33m'
+        readonly BLUE='\033[0;34m'
+        readonly PURPLE='\033[0;35m'
+        readonly CYAN='\033[0;36m'
+        readonly NC='\033[0m'
+    fi
 else
     readonly RED=''; GREEN=''; YELLOW=''; BLUE=''; PURPLE=''; CYAN=''; NC=''
 fi
@@ -38,24 +51,50 @@ VERBOSE=false
 TARGET_DIR="$HOME"
 
 # ============================================
-# 辅助函数
+# 辅助函数 - 使用 printf 而不是 echo -e 来确保转义序列正确
 # ============================================
 
+color_echo() {
+    local color="$1"
+    shift
+    if [[ -n "$color" ]]; then
+        printf "%b%s%b\n" "$color" "$*" "$NC"
+    else
+        printf "%s\n" "$*"
+    fi
+}
+
 log_info() {
-    echo -e "${GREEN}[INFO]${NC} $*"
+    if [[ -n "$GREEN" ]]; then
+        printf "%b[INFO]%b %s\n" "$GREEN" "$NC" "$*"
+    else
+        echo "[INFO] $*"
+    fi
 }
 
 log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $*" >&2
+    if [[ -n "$YELLOW" ]]; then
+        printf "%b[WARN]%b %s\n" "$YELLOW" "$NC" "$*" >&2
+    else
+        echo "[WARN] $*" >&2
+    fi
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $*" >&2
+    if [[ -n "$RED" ]]; then
+        printf "%b[ERROR]%b %s\n" "$RED" "$NC" "$*" >&2
+    else
+        echo "[ERROR] $*" >&2
+    fi
 }
 
 log_debug() {
     if [[ "$VERBOSE" == true ]]; then
-        echo -e "${CYAN}[DEBUG]${NC} $*"
+        if [[ -n "$CYAN" ]]; then
+            printf "%b[DEBUG]%b %s\n" "$CYAN" "$NC" "$*"
+        else
+            echo "[DEBUG] $*"
+        fi
     fi
 }
 
@@ -118,12 +157,16 @@ load_rules() {
 }
 
 show_rules() {
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}当前文件整理规则:${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+    local line_color="${CYAN:-}"
+    local title_color="${GREEN:-}"
+    local cat_color="${YELLOW:-}"
+    
+    printf "%b═══════════════════════════════════════════════════════════%b\n" "$line_color" "${NC:-}"
+    printf "%b当前文件整理规则:%b\n" "$title_color" "${NC:-}"
+    printf "%b═══════════════════════════════════════════════════════════%b\n" "$line_color" "${NC:-}"
 
     if [[ ! -f "$RULES_FILE" ]]; then
-        echo -e "${YELLOW}未找到规则文件，请运行 'organize --init' 创建默认规则${NC}"
+        printf "%b未找到规则文件，请运行 'organize --init' 创建默认规则%b\n" "${YELLOW:-}" "${NC:-}"
         return
     fi
 
@@ -134,13 +177,13 @@ show_rules() {
         dest=$(echo "$dest" | xargs)
         category=$(echo "$dest" | cut -d'/' -f1)
         if [[ "$category" != "$current_category" ]]; then
-            echo -e "\n${YELLOW}[$category]${NC}"
+            printf "\n%b[%s]%b\n" "$cat_color" "$category" "${NC:-}"
             current_category="$category"
         fi
-        echo "  $extensions → $dest"
+        printf "  %s → %s\n" "$extensions" "$dest"
     done < "$RULES_FILE"
 
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+    printf "%b═══════════════════════════════════════════════════════════%b\n" "$line_color" "${NC:-}"
 }
 
 add_rule() {
@@ -254,11 +297,15 @@ organize_directory() {
         return 1
     fi
 
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}📂 整理目录: $target_dir${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+    local line_color="${CYAN:-}"
+    local title_color="${GREEN:-}"
+    
+    printf "%b═══════════════════════════════════════════════════════════%b\n" "$line_color" "${NC:-}"
+    printf "%b📂 整理目录: %s%b\n" "$title_color" "$target_dir" "${NC:-}"
+    printf "%b═══════════════════════════════════════════════════════════%b\n" "$line_color" "${NC:-}"
+    
     if [[ "$DRY_RUN" == true ]]; then
-        echo -e "${YELLOW}⚠️  模拟运行模式 - 不会实际移动文件${NC}\n"
+        printf "%b⚠️  模拟运行模式 - 不会实际移动文件%b\n\n" "${YELLOW:-}" "${NC:-}"
     fi
 
     # 收集所有需要创建的目标目录
@@ -274,9 +321,9 @@ organize_directory() {
         for dir in "${!dirs_to_create[@]}"; do
             if [[ "$DRY_RUN" == false ]]; then
                 mkdir -p "$dir"
-                echo -e "  ${GREEN}✓${NC} $dir"
+                printf "  %b✓%b %s\n" "${GREEN:-}" "${NC:-}" "$dir"
             else
-                echo -e "  ${CYAN}[模拟]${NC} 将创建: $dir"
+                printf "  %b[模拟]%b 将创建: %s\n" "${CYAN:-}" "${NC:-}" "$dir"
             fi
         done
         echo
@@ -294,7 +341,7 @@ organize_directory() {
 
     if [[ ${#files[@]} -eq 0 ]]; then
         log_info "没有需要整理的文件"
-        echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+        printf "%b═══════════════════════════════════════════════════════════%b\n" "$line_color" "${NC:-}"
         return 0
     fi
 
@@ -317,12 +364,12 @@ organize_directory() {
 
             local dest_file="$dest_dir/$filename"
             if [[ -f "$dest_file" ]]; then
-                echo -e "  ${YELLOW}⚠${NC} 跳过: $filename (目标已存在)"
+                printf "  %b⚠%b 跳过: %s (目标已存在)\n" "${YELLOW:-}" "${NC:-}" "$filename"
                 ((skipped_count++))
                 continue
             fi
 
-            echo -e "  ${GREEN}→${NC} $filename (.$ext → ${BLUE}$dest_dir${NC})"
+            printf "  %b→%b %s (.%s → %b%s%b)\n" "${GREEN:-}" "${NC:-}" "$filename" "$ext" "${BLUE:-}" "$dest_dir" "${NC:-}"
             if [[ "$DRY_RUN" == false ]]; then
                 mv "$file" "$dest_dir/" && {
                     ((moved_count++))
@@ -334,7 +381,7 @@ organize_directory() {
                 ((moved_count++))
             fi
         else
-            echo -e "  ${PURPLE}?${NC} $filename (未知类型: ${ext:-无扩展名})"
+            printf "  %b?%b %s (未知类型: %s)\n" "${PURPLE:-}" "${NC:-}" "$filename" "${ext:-无扩展名}"
             ((unknown_count++))
         fi
     done
@@ -346,22 +393,22 @@ organize_directory() {
 
     # 统计输出
     echo
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}📊 整理完成:${NC}"
-    echo -e "  ${GREEN}✓${NC} 已移动: $moved_count 个文件"
-    [[ $skipped_count -gt 0 ]] && echo -e "  ${YELLOW}⚠${NC}  已跳过: $skipped_count 个文件"
-    [[ $unknown_count -gt 0 ]] && echo -e "  ${PURPLE}?${NC}  未知类型: $unknown_count 个文件"
+    printf "%b═══════════════════════════════════════════════════════════%b\n" "$line_color" "${NC:-}"
+    printf "%b📊 整理完成:%b\n" "$title_color" "${NC:-}"
+    printf "  %b✓%b 已移动: %d 个文件\n" "${GREEN:-}" "${NC:-}" "$moved_count"
+    [[ $skipped_count -gt 0 ]] && printf "  %b⚠%b  已跳过: %d 个文件\n" "${YELLOW:-}" "${NC:-}" "$skipped_count"
+    [[ $unknown_count -gt 0 ]] && printf "  %b?%b  未知类型: %d 个文件\n" "${PURPLE:-}" "${NC:-}" "$unknown_count"
 
     if [[ $moved_count -gt 0 && "$DRY_RUN" == false ]]; then
         local total_mb=$((total_size / 1048576))
-        [[ $total_mb -gt 0 ]] && echo -e "  💾 总大小: ~${total_mb} MB"
+        [[ $total_mb -gt 0 ]] && printf "  💾 总大小: ~%d MB\n" "$total_mb"
     fi
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
+    printf "%b═══════════════════════════════════════════════════════════%b\n" "$line_color" "${NC:-}"
 
     if [[ $unknown_count -gt 0 ]]; then
-        echo -e "\n${YELLOW}💡 提示: 可以使用以下命令添加规则:${NC}"
-        echo -e "   organize --add <扩展名> <目标目录>"
-        echo -e "   示例: organize --add iso 下载/镜像"
+        printf "\n%b💡 提示: 可以使用以下命令添加规则:%b\n" "${YELLOW:-}" "${NC:-}"
+        echo "   organize --add <扩展名> <目标目录>"
+        echo "   示例: organize --add iso 下载/镜像"
     fi
 }
 
@@ -370,39 +417,40 @@ organize_directory() {
 # ============================================
 
 show_help() {
-    cat <<EOF
-${GREEN}organize - 文件自动整理工具 v$VERSION${NC}
-根据扩展名规则自动整理指定目录中的文件。
-
-${YELLOW}用法:${NC}
-  organize [选项] [目录]
-
-${YELLOW}选项:${NC}
-  -d, --dir DIR         指定要整理的目录 (默认: ~)
-  --dry-run             模拟运行，不实际移动文件
-  --clean-temp          同时清理临时文件 (temp目录和常见临时文件)
-  -v, --verbose         显示详细信息
-  --init                创建默认规则文件（如果不存在）
-
-${YELLOW}规则管理:${NC}
-  --show-rules          显示当前所有规则
-  --add EXT DIR         添加新规则 (EXT:扩展名, DIR:目标目录)
-  --remove EXT          删除规则
-  --edit-rules          用默认编辑器打开规则文件
-
-${YELLOW}其他:${NC}
-  -h, --help            显示此帮助
-  --version             显示版本信息
-
-${YELLOW}示例:${NC}
-  organize                              # 整理主目录
-  organize -d ~/下载                    # 整理下载目录
-  organize --dry-run --clean-temp       # 模拟运行并显示临时文件清理
-  organize --show-rules                 # 查看当前规则
-  organize --add iso 下载/镜像          # 添加 .iso 规则
-  organize --remove iso                 # 删除 .iso 规则
-
-EOF
+    local green="${GREEN:-}"
+    local yellow="${YELLOW:-}"
+    local nc="${NC:-}"
+    
+    printf "%sorganize - 文件自动整理工具 v%s%s\n" "$green" "$VERSION" "$nc"
+    echo "根据扩展名规则自动整理指定目录中的文件。"
+    echo
+    printf "%s用法:%s\n" "$yellow" "$nc"
+    echo "  organize [选项] [目录]"
+    echo
+    printf "%s选项:%s\n" "$yellow" "$nc"
+    echo "  -d, --dir DIR         指定要整理的目录 (默认: ~)"
+    echo "  --dry-run             模拟运行，不实际移动文件"
+    echo "  --clean-temp          同时清理临时文件 (temp目录和常见临时文件)"
+    echo "  -v, --verbose         显示详细信息"
+    echo "  --init                创建默认规则文件（如果不存在）"
+    echo
+    printf "%s规则管理:%s\n" "$yellow" "$nc"
+    echo "  --show-rules          显示当前所有规则"
+    echo "  --add EXT DIR         添加新规则 (EXT:扩展名, DIR:目标目录)"
+    echo "  --remove EXT          删除规则"
+    echo "  --edit-rules          用默认编辑器打开规则文件"
+    echo
+    printf "%s其他:%s\n" "$yellow" "$nc"
+    echo "  -h, --help            显示此帮助"
+    echo "  --version             显示版本信息"
+    echo
+    printf "%s示例:%s\n" "$yellow" "$nc"
+    echo "  organize                              # 整理主目录"
+    echo "  organize -d ~/下载                    # 整理下载目录"
+    echo "  organize --dry-run --clean-temp       # 模拟运行并显示临时文件清理"
+    echo "  organize --show-rules                 # 查看当前规则"
+    echo "  organize --add iso 下载/镜像          # 添加 .iso 规则"
+    echo "  organize --remove iso                 # 删除 .iso 规则"
 }
 
 show_version() {
