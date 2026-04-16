@@ -4,7 +4,7 @@ MANDIR    ?= $(PREFIX)/share/man/man1
 DATADIR   ?= $(PREFIX)/share/organize
 CONFIGDIR ?= $(DATADIR)
 
-VERSION := 2.0.1
+VERSION := 2.0.2
 SCRIPT   := src/organize.sh
 OUTPUT   := build/organize.sh
 
