@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.5] - 2026-04-16
+
+### Added
+
+- GitHub Actions 自动推送 AUR 包
+- 新增 AUR 发布 workflow
+
+### Changed
+
+- 版本更新至 v2.0.5
+
 ## [2.0.4] - 2026-04-16
 
 ### Changed
