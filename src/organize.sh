@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail  # 移除 -u，改用更宽松的错误处理
 
 # ============================================
 # organize - 文件自动整理工具
-# 版本: 2.0.8
+# 版本: 2.0.9
 # ============================================
 
 readonly SCRIPT_NAME="organize"
-readonly VERSION="2.0.8"
+readonly VERSION="2.0.9"
 
 # 配置文件路径（遵循 XDG 规范）
 : "${XDG_CONFIG_HOME:=$HOME/.config}"
@@ -18,7 +18,7 @@ readonly LOG_DIR="$XDG_STATE_HOME/$SCRIPT_NAME"
 readonly LOG_FILE="$LOG_DIR/organize.log"
 readonly DEFAULT_RULES_SYSTEM="/usr/share/$SCRIPT_NAME/rules.conf.default"
 
-# 颜色定义 - 修复：只在输出到终端时启用，并且使用 tput 或直接检测
+# 颜色定义
 if [[ -t 1 ]] && [[ "$TERM" != "" ]] && [[ "$TERM" != "dumb" ]]; then
     if command -v tput &> /dev/null && tput colors &> /dev/null && [[ $(tput colors) -ge 8 ]]; then
         readonly RED=$(tput setaf 1)
@@ -87,8 +87,8 @@ log_debug() {
 
 log_to_file() {
     local msg="$1"
-    mkdir -p "$LOG_DIR"
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $msg" >> "$LOG_FILE"
+    mkdir -p "$LOG_DIR" 2>/dev/null || true
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $msg" >> "$LOG_FILE" 2>/dev/null || true
 }
 
 # ============================================
@@ -96,12 +96,12 @@ log_to_file() {
 # ============================================
 
 init_config() {
-    mkdir -p "$CONFIG_DIR"
-    mkdir -p "$LOG_DIR"
+    mkdir -p "$CONFIG_DIR" 2>/dev/null || true
+    mkdir -p "$LOG_DIR" 2>/dev/null || true
 
     if [[ ! -f "$RULES_FILE" ]]; then
         if [[ -f "$DEFAULT_RULES_SYSTEM" ]]; then
-            cp "$DEFAULT_RULES_SYSTEM" "$RULES_FILE"
+            cp "$DEFAULT_RULES_SYSTEM" "$RULES_FILE" 2>/dev/null || true
             log_info "已创建默认规则文件: $RULES_FILE"
         else
             log_warn "未找到系统默认规则文件，请手动创建: $RULES_FILE"
@@ -198,7 +198,7 @@ add_rule() {
         read -p "是否创建目录 '$full_path'? (Y/n): " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-            mkdir -p "$full_path"
+            mkdir -p "$full_path" 2>/dev/null || true
             log_info "已创建目录: $full_path"
         fi
     fi
@@ -234,7 +234,7 @@ clean_temp() {
         if [[ $count -gt 0 ]]; then
             log_debug "发现 $count 个临时文件"
             if [[ "$DRY_RUN" == false ]]; then
-                rm -rf "$target_dir/temp"/*
+                rm -rf "$target_dir/temp"/* 2>/dev/null || true
                 log_info "已清空 temp 目录"
             else
                 log_info "[模拟] 将清空 temp 目录"
@@ -251,7 +251,7 @@ clean_temp() {
         if [[ ${#files[@]} -gt 0 ]]; then
             log_debug "发现 ${#files[@]} 个匹配 '$pattern' 的文件"
             if [[ "$DRY_RUN" == false ]]; then
-                rm -f "${files[@]}"
+                rm -f "${files[@]}" 2>/dev/null || true
                 log_info "已删除匹配 '$pattern' 的文件"
             else
                 log_info "[模拟] 将删除匹配 '$pattern' 的文件"
@@ -287,7 +287,7 @@ organize_directory() {
         printf "%b⚠️  模拟运行模式 - 不会实际移动文件%b\n\n" "${YELLOW:-}" "${NC:-}"
     fi
 
-    # 收集所有需要创建的目标目录 - 修复：正确遍历关联数组
+    # 收集所有需要创建的目标目录
     local dirs_to_create=()
     if [[ ${#RULES[@]} -gt 0 ]]; then
         for key in "${!RULES[@]}"; do
@@ -312,7 +312,7 @@ organize_directory() {
         log_info "创建必要目录..."
         for dir in "${unique_dirs[@]}"; do
             if [[ "$DRY_RUN" == false ]]; then
-                mkdir -p "$dir"
+                mkdir -p "$dir" 2>/dev/null || true
                 printf "  %b✓%b %s\n" "${GREEN:-}" "${NC:-}" "$dir"
             else
                 printf "  %b[模拟]%b 将创建: %s\n" "${CYAN:-}" "${NC:-}" "$dir"
@@ -328,7 +328,7 @@ organize_directory() {
     local files=()
     while IFS= read -r -d '' f; do
         files+=("$f")
-    done < <(find "$target_dir" -maxdepth 1 -type f -print0 2>/dev/null)
+    done < <(find "$target_dir" -maxdepth 1 -type f -print0 2>/dev/null || true)
 
     if [[ ${#files[@]} -eq 0 ]]; then
         log_info "没有需要整理的文件"
@@ -337,24 +337,31 @@ organize_directory() {
     fi
 
     for file in "${files[@]}"; do
+        # 确保文件仍然存在（可能被之前的操作移动）
+        if [[ ! -f "$file" ]]; then
+            continue
+        fi
+        
         local filename=$(basename "$file")
         # 跳过隐藏文件
         [[ "$filename" == .* ]] && continue
 
-        local ext="${filename##*.}"
-        if [[ "$filename" == "$ext" ]]; then
-            ext=""
-        else
-            ext="${ext,,}"
+        local ext=""
+        # 安全地获取扩展名
+        if [[ "$filename" == *.* ]]; then
+            ext="${filename##*.}"
+            ext="${ext,,}"  # 转小写
         fi
-
+        
         local dest_dir=""
         if [[ -n "$ext" ]] && [[ -v "RULES[$ext]" ]]; then
             dest_dir="${RULES[$ext]}"
         fi
         
         if [[ -n "$dest_dir" ]]; then
-            local file_size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo 0)
+            # 获取文件大小（忽略错误）
+            local file_size=0
+            file_size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo 0)
             total_size=$((total_size + file_size))
 
             local dest_file="$dest_dir/$filename"
@@ -364,9 +371,15 @@ organize_directory() {
                 continue
             fi
 
-            printf "  %b→%b %s (.%s → %b%s%b)\n" "${GREEN:-}" "${NC:-}" "$filename" "$ext" "${BLUE:-}" "$dest_dir" "${NC:-}"
+            printf "  %b→%b %s" "${GREEN:-}" "${NC:-}" "$filename"
+            if [[ -n "$ext" ]]; then
+                printf " (.%s → %b%s%b)\n" "$ext" "${BLUE:-}" "$dest_dir" "${NC:-}"
+            else
+                printf " (无扩展名 → %b%s%b)\n" "${BLUE:-}" "$dest_dir" "${NC:-}"
+            fi
+            
             if [[ "$DRY_RUN" == false ]]; then
-                if mv "$file" "$dest_dir/"; then
+                if mv "$file" "$dest_dir/" 2>/dev/null; then
                     ((moved_count++))
                     log_to_file "MOVED: $filename -> $dest_dir"
                 else
@@ -376,7 +389,11 @@ organize_directory() {
                 ((moved_count++))
             fi
         else
-            printf "  %b?%b %s (未知类型: %s)\n" "${PURPLE:-}" "${NC:-}" "$filename" "${ext:-无扩展名}"
+            if [[ -n "$ext" ]]; then
+                printf "  %b?%b %s (未知类型: .%s)\n" "${PURPLE:-}" "${NC:-}" "$filename" "$ext"
+            else
+                printf "  %b?%b %s (无扩展名)\n" "${PURPLE:-}" "${NC:-}" "$filename"
+            fi
             ((unknown_count++))
         fi
     done
@@ -401,7 +418,9 @@ organize_directory() {
     if [[ $unknown_count -gt 0 ]]; then
         printf "\n%b💡 提示: 可以使用以下命令添加规则:%b\n" "${YELLOW:-}" "${NC:-}"
         echo "   organize --add <扩展名> <目标目录>"
-        echo "   示例: organize --add iso 下载/镜像"
+        echo "   示例: organize --add txt 文档/文本"
+        echo "   或者将无扩展名的文件移动到特定目录:"
+        echo "   organize --add '' 下载/其他"
     fi
 }
 
@@ -467,7 +486,7 @@ edit_rules() {
 # ============================================
 
 main() {
-    mkdir -p "$CONFIG_DIR" "$LOG_DIR"
+    mkdir -p "$CONFIG_DIR" "$LOG_DIR" 2>/dev/null || true
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -490,7 +509,7 @@ main() {
             --init)
                 init_config
                 if [[ ! -f "$RULES_FILE" ]] && [[ -f "$DEFAULT_RULES_SYSTEM" ]]; then
-                    cp "$DEFAULT_RULES_SYSTEM" "$RULES_FILE"
+                    cp "$DEFAULT_RULES_SYSTEM" "$RULES_FILE" 2>/dev/null || true
                     log_info "已创建默认规则文件: $RULES_FILE"
                 elif [[ ! -f "$RULES_FILE" ]]; then
                     log_error "系统默认规则文件不存在，请手动创建规则文件: $RULES_FILE"
@@ -541,6 +560,6 @@ main() {
     organize_directory "$TARGET_DIR"
 }
 
-trap 'echo -e "\n中断整理"; exit 130' INT
+trap 'echo ""; log_info "整理已中断"; exit 130' INT
 
 main "$@"
