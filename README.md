@@ -1,6 +1,6 @@
 # organize – 文件自动整理工具
 
-[![Build](https://github.com/ZhX589/organize/actions/workflows/build.yml/badge.svg)](https://github.com/ZhX589/organize/actions/workflows/build.yml)
+[![Build](https://github.com/ZhX589/organize/actions/workflows/build.yml/badge.svg?branch=v2.0.7)](https://github.com/ZhX589/organize/actions/workflows/build.yml)
 
 根据扩展名规则自动整理指定目录中的文件，支持自定义规则、模拟运行、临时文件清理。
 
