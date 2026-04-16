@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.1] - 2026-04-16
+
+### Added
+
+- 添加 GitHub Actions 自动构建
+
 ## [2.0.0] - 2026-04-16
 
 ### Added
