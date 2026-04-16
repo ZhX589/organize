@@ -1,0 +1,49 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build deb
+        run: make deb
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: organize-deb
+          path: organize_*.deb
+
+  build-rpm:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install rpm-build
+        run: dnf install -y rpm-build
+      - name: Build rpm
+        run: make rpm
+      - name: Upload rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: organize-rpm
+          path: organize-*.rpm
+
+  create-release:
+    needs: [build-deb, build-rpm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            organize-deb/organize_*.deb
+            organize-rpm/organize-*.rpm
+          generate_release_notes: true
