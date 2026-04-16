@@ -3,11 +3,11 @@ set -euo pipefail
 
 # ============================================
 # organize - 文件自动整理工具
-# 版本: 2.0.6
+# 版本: 2.0.7
 # ============================================
 
 readonly SCRIPT_NAME="organize"
-readonly VERSION="2.0.6"
+readonly VERSION="2.0.7"
 
 # 配置文件路径（遵循 XDG 规范）
 : "${XDG_CONFIG_HOME:=$HOME/.config}"
@@ -19,9 +19,7 @@ readonly LOG_FILE="$LOG_DIR/organize.log"
 readonly DEFAULT_RULES_SYSTEM="/usr/share/$SCRIPT_NAME/rules.conf.default"
 
 # 颜色定义 - 修复：只在输出到终端时启用，并且使用 tput 或直接检测
-# 注意：某些终端环境下 echo -e 可能不支持 \033，所以改用 tput 或更可靠的方式
 if [[ -t 1 ]] && [[ "$TERM" != "" ]] && [[ "$TERM" != "dumb" ]]; then
-    # 检查是否支持颜色
     if command -v tput &> /dev/null && tput colors &> /dev/null && [[ $(tput colors) -ge 8 ]]; then
         readonly RED=$(tput setaf 1)
         readonly GREEN=$(tput setaf 2)
@@ -31,7 +29,6 @@ if [[ -t 1 ]] && [[ "$TERM" != "" ]] && [[ "$TERM" != "dumb" ]]; then
         readonly CYAN=$(tput setaf 6)
         readonly NC=$(tput sgr0)
     else
-        # 回退到 ANSI 转义序列（大部分现代终端支持）
         readonly RED='\033[0;31m'
         readonly GREEN='\033[0;32m'
         readonly YELLOW='\033[1;33m'
@@ -51,18 +48,8 @@ VERBOSE=false
 TARGET_DIR="$HOME"
 
 # ============================================
-# 辅助函数 - 使用 printf 而不是 echo -e 来确保转义序列正确
+# 辅助函数
 # ============================================
-
-color_echo() {
-    local color="$1"
-    shift
-    if [[ -n "$color" ]]; then
-        printf "%b%s%b\n" "$color" "$*" "$NC"
-    else
-        printf "%s\n" "$*"
-    fi
-}
 
 log_info() {
     if [[ -n "$GREEN" ]]; then
@@ -112,7 +99,6 @@ init_config() {
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$LOG_DIR"
 
-    # 如果用户规则文件不存在，尝试从系统默认复制
     if [[ ! -f "$RULES_FILE" ]]; then
         if [[ -f "$DEFAULT_RULES_SYSTEM" ]]; then
             cp "$DEFAULT_RULES_SYSTEM" "$RULES_FILE"
@@ -124,7 +110,7 @@ init_config() {
 }
 
 # ============================================
-# 规则管理（基于数组）
+# 规则管理
 # ============================================
 
 declare -A RULES
@@ -136,16 +122,13 @@ load_rules() {
     fi
 
     while IFS=: read -r extensions dest; do
-        # 跳过注释和空行
         [[ "$extensions" =~ ^[[:space:]]*# ]] && continue
         [[ -z "$extensions" ]] && continue
 
-        # 去除首尾空格
         extensions=$(echo "$extensions" | xargs)
         dest=$(echo "$dest" | xargs)
         [[ -z "$extensions" || -z "$dest" ]] && continue
 
-        # 支持多个扩展名用逗号分隔
         IFS=',' read -ra ext_array <<< "$extensions"
         for ext in "${ext_array[@]}"; do
             ext=$(echo "$ext" | xargs)
@@ -197,7 +180,6 @@ add_rule() {
         return 1
     fi
 
-    # 检查是否已存在
     if grep -q "^$extensions:" "$RULES_FILE" 2>/dev/null; then
         log_warn "规则 '$extensions' 已存在"
         read -p "是否覆盖? (y/N): " -n 1 -r
@@ -211,7 +193,6 @@ add_rule() {
     echo "$extensions:$dest_dir" >> "$RULES_FILE"
     log_info "已添加规则: $extensions → $dest_dir"
 
-    # 可选：创建目录
     local full_path="$HOME/$dest_dir"
     if [[ ! -d "$full_path" ]]; then
         read -p "是否创建目录 '$full_path'? (Y/n): " -n 1 -r
@@ -248,7 +229,6 @@ clean_temp() {
     local target_dir="$1"
     log_info "清理临时文件: $target_dir"
 
-    # 清理 temp 目录内容
     if [[ -d "$target_dir/temp" ]]; then
         local count=$(find "$target_dir/temp" -type f 2>/dev/null | wc -l)
         if [[ $count -gt 0 ]]; then
@@ -262,7 +242,6 @@ clean_temp() {
         fi
     fi
 
-    # 清理常见临时文件模式
     local patterns=("temp.*" "*.tmp" "*.temp" "*.cache" "~*" "*~")
     for pattern in "${patterns[@]}"; do
         local files=()
@@ -308,17 +287,17 @@ organize_directory() {
         printf "%b⚠️  模拟运行模式 - 不会实际移动文件%b\n\n" "${YELLOW:-}" "${NC:-}"
     fi
 
-    # 收集所有需要创建的目标目录
-    declare -A dirs_to_create
+    # 收集所有需要创建的目标目录（使用普通数组避免关联数组为空的问题）
+    local dirs_to_create=()
     for dest_dir in "${RULES[@]}"; do
         if [[ ! -d "$dest_dir" ]]; then
-            dirs_to_create["$dest_dir"]=1
+            dirs_to_create+=("$dest_dir")
         fi
     done
 
     if [[ ${#dirs_to_create[@]} -gt 0 ]]; then
         log_info "创建必要目录..."
-        for dir in "${!dirs_to_create[@]}"; do
+        for dir in "${dirs_to_create[@]}"; do
             if [[ "$DRY_RUN" == false ]]; then
                 mkdir -p "$dir"
                 printf "  %b✓%b %s\n" "${GREEN:-}" "${NC:-}" "$dir"
@@ -333,7 +312,6 @@ organize_directory() {
     local moved_count=0 skipped_count=0 unknown_count=0
     local total_size=0
 
-    # 使用 find 获取文件列表（不递归子目录）
     local files=()
     while IFS= read -r -d '' f; do
         files+=("$f")
@@ -347,12 +325,11 @@ organize_directory() {
 
     for file in "${files[@]}"; do
         local filename=$(basename "$file")
-        # 跳过隐藏文件（可选，如果需要整理隐藏文件，注释下面两行）
         [[ "$filename" == .* ]] && continue
 
         local ext="${filename##*.}"
         if [[ "$filename" == "$ext" ]]; then
-            ext=""  # 无扩展名
+            ext=""
         else
             ext="${ext,,}"
         fi
@@ -386,12 +363,10 @@ organize_directory() {
         fi
     done
 
-    # 清理临时文件
     if [[ "$CLEAN_TEMP" == true ]]; then
         clean_temp "$target_dir"
     fi
 
-    # 统计输出
     echo
     printf "%b═══════════════════════════════════════════════════════════%b\n" "$line_color" "${NC:-}"
     printf "%b📊 整理完成:%b\n" "$title_color" "${NC:-}"
@@ -474,10 +449,8 @@ edit_rules() {
 # ============================================
 
 main() {
-    # 先初始化配置目录（但不一定创建规则文件）
     mkdir -p "$CONFIG_DIR" "$LOG_DIR"
 
-    # 解析参数
     while [[ $# -gt 0 ]]; do
         case $1 in
             -d|--dir)
@@ -539,24 +512,17 @@ main() {
                 exit 1
                 ;;
             *)
-                # 位置参数作为目标目录
                 TARGET_DIR="$1"
                 shift
                 ;;
         esac
     done
 
-    # 初始化用户配置（如果规则文件不存在则创建）
     init_config
-
-    # 加载规则
     load_rules
-
-    # 执行整理
     organize_directory "$TARGET_DIR"
 }
 
-# 捕获 Ctrl+C
-trap 'echo -e "\n${YELLOW}中断整理${NC}"; exit 130' INT
+trap 'echo -e "\n中断整理"; exit 130' INT
 
 main "$@"
