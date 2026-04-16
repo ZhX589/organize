@@ -2,6 +2,16 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build](https://github.com/ZhX589/organize/actions/workflows/build.yml/badge.svg?branch=v2.0.9)](https://github.com/ZhX589/organize/actions/workflows/build.yml)
+[![Made with Bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/)
+[![Platform](https://img.shields.io/badge/platform-Linux-blue.svg)](https://www.linux.org/)
+[![GitHub stars](https://img.shields.io/github/stars/ZhX589/organize?style=social)](https://github.com/ZhX589/organize/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/ZhX589/organize?style=social)](https://github.com/ZhX589/organize/network/members)
+[![GitHub watchers](https://img.shields.io/github/watchers/ZhX589/organize?style=social)](https://github.com/ZhX589/organize/watchers)
+[![GitHub release](https://img.shields.io/github/v/release/ZhX589/organize)](https://github.com/ZhX589/organize/releases)
+[![GitHub commits](https://img.shields.io/github/commit-activity/m/ZhX589/organize)](https://github.com/ZhX589/organize/commits)
+[![Makefile](https://img.shields.io/badge/Makefile-5391FE?logo=cmake&logoColor=white)](https://www.gnu.org/software/make/)
+[![GitHub last commit](https://img.shields.io/github/last-commit/ZhX589/organize)](https://github.com/ZhX589/organize/commits)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
 根据扩展名规则自动整理指定目录中的文件，支持自定义规则、模拟运行、临时文件清理。
 
