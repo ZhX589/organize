@@ -2,9 +2,16 @@
 
 ## [2.0.2] - 2026-04-16
 
+### Changed
+
+- 移除 RPM 打包支持，专注于 DEB 和 AUR
+- 简化 CI 构建流程，仅构建 DEB 包
+- 优化 Makefile，移除冗余目标
+
 ### Fixed
 
-- 修复 GitHub Actions 自动构建出现的问题
+- 修复 GitHub Actions 中 make 命令未找到的问题
+- 修复构建产物与源码文件命名冲突
 
 ## [2.0.1] - 2026-04-16
 

@@ -19,7 +19,7 @@
 ### Debian / Ubuntu
 
 ```bash
-sudo dpkg -i organize_2.0.0_all.deb
+sudo dpkg -i organize_2.0.2_all.deb
 ```
 
 ### Arch Linux (AUR)
