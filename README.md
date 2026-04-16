@@ -25,8 +25,10 @@ sudo dpkg -i organize_2.0.2_all.deb
 ### Arch Linux (AUR)
 
 ```bash
-yay -S organize-bin
+paru -S organize-git
 ```
+
+> 需要先[安装`paru`](https://wiki.archlinuxcn.org/wiki/AUR_%E5%8A%A9%E6%89%8B)
 
 ### 从源码安装
 

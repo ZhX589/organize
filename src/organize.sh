@@ -7,7 +7,7 @@ set -euo pipefail
 # ============================================
 
 readonly SCRIPT_NAME="organize"
-readonly VERSION="@@VERSION@@"   # 打包时会被 Makefile 替换
+readonly VERSION="${VERSION:-2.0.4}"
 
 # 配置文件路径（遵循 XDG 规范）
 : "${XDG_CONFIG_HOME:=$HOME/.config}"

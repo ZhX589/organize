@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.0.4] - 2026-04-16
+
+### Changed
+
+- 改为 AUR -git 版本，直接从 Git 仓库拉取源码
+- 简化发布流程，无需手动打包 tar.gz
+
+### Fixed
+
+- 修复 AUR 下载失败问题
+
+## [2.0.3] - 2026-04-16
+
+### Added
+
+- 支持 GitHub Actions 自动发布到 AUR
+
+### Changed
+
+- 优化 CI/CD 流程，自动更新 AUR 包
+
 ## [2.0.2] - 2026-04-16
 
 ### Changed
