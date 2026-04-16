@@ -1,0 +1,11 @@
+Package: organize
+Version: 2.0.0
+Section: utils
+Priority: optional
+Architecture: all
+Depends: bash (>= 4.0), coreutils
+Maintainer: Your Name <your.email@example.com>
+Description: File organizer by extension
+ Automatically sort files in a directory based on customizable rules.
+ It supports dry-run, custom rules, temporary file cleaning, and more.
+Homepage: https://github.com/yourusername/organize

@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+# 首次安装时，为用户创建默认规则文件的提示（可选）
+if [ "$1" = "configure" ]; then
+    echo "organize installed. Run 'organize --init' to create default rules."
+fi
+exit 0

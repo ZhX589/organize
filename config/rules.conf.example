@@ -1,0 +1,62 @@
+# 文件整理规则配置文件
+# 格式: 扩展名1,扩展名2:目标目录（相对于 $HOME）
+# 注释行以 # 开头
+
+# 安装包类
+deb:下载/安装包/deb
+exe,msi:下载/安装包/exe
+apk,xapk:下载/安装包/apk
+jar:下载/安装包/jar
+rpm,pkg:下载/安装包/其他
+
+# 压缩包类
+zip,tar,gz,bz2,xz,7z,rar,zst:下载/压缩包
+
+# 文档类
+pdf:文档/PDF
+epub,mobi,azw3:文档/电子书
+md,markdown:文档/Markdown
+txt,text,log:文档/文本
+doc,docx:文档/Word
+xls,xlsx,csv:文档/Excel
+ppt,pptx:文档/PowerPoint
+
+# 图片类
+jpg,jpeg:图片/JPEG
+png:图片/PNG
+gif:图片/GIF
+svg:图片/SVG
+bmp,tiff,webp:图片/其他
+psd:图片/Photoshop
+ai,eps:图片/矢量图
+
+# 视频类
+mp4:视频/MP4
+avi,mkv,mov,wmv,flv:视频/其他
+webm:视频/WebM
+
+# 音乐类
+mp3:音乐/MP3
+flac:音乐/无损
+wav:音乐/WAV
+m4a,aac,ogg:音乐/其他
+
+# 代码类
+sh,bash,zsh:项目/脚本
+py,pyc:项目/Python
+js,mjs:项目/JavaScript
+ts:项目/TypeScript
+html,htm:项目/Web
+css,scss,sass:项目/样式
+json,yml,yaml:项目/配置
+xml:项目/XML
+go:项目/Go
+rs:项目/Rust
+c,cpp,h,hpp:项目/C_C++
+java:项目/Java
+
+# 种子文件
+torrent:下载/种子
+
+# 临时文件（通常不需要规则，由 --clean-temp 处理）
+tmp,temp,cache:temp

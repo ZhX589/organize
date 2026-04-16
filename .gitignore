@@ -1,0 +1,12 @@
+# 忽略构建产物（根目录下的 organize.sh）
+/organize.sh
+
+# 忽略打包生成的目录和文件
+debian/
+rpmbuild/
+*.deb
+*.rpm
+
+# 忽略编辑器临时文件
+*~
+*.swp

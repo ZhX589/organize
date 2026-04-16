@@ -1,0 +1,72 @@
+.TH ORGANIZE 1 "April 2026" "2.0.0" "User Commands"
+.SH NAME
+organize \- file organizer by extension
+.SH SYNOPSIS
+.B organize
+[OPTIONS] [DIRECTORY]
+.SH DESCRIPTION
+Automatically sort files in a directory based on customizable rules.
+Rules are defined in ~/.config/organize/rules.conf.
+.SH OPTIONS
+.TP
+\fB-d, --dir\fR DIR
+Specify directory to organize (default: ~)
+.TP
+\fB--dry-run\fR
+Simulate without moving files
+.TP
+\fB--clean-temp\fR
+Also clean temporary files (temp/, *.tmp, etc.)
+.TP
+\fB-v, --verbose\fR
+Verbose output
+.TP
+\fB--init\fR
+Create default rules file if not exists
+.TP
+\fB--show-rules\fR
+Display current rules
+.TP
+\fB--add\fR EXT DIR
+Add a new rule (EXT: extension, DIR: target dir relative to $HOME)
+.TP
+\fB--remove\fR EXT
+Remove a rule
+.TP
+\fB--edit-rules\fR
+Edit rules file with $EDITOR
+.TP
+\fB-h, --help\fR
+Show help message
+.TP
+\fB--version\fR
+Show version information
+.SH EXAMPLES
+.PP
+Organize home directory:
+.RS
+organize
+.RE
+.PP
+Organize Downloads with temp cleanup:
+.RS
+organize -d ~/Downloads --clean-temp
+.RE
+.PP
+Add a rule for ISO files:
+.RS
+organize --add iso 下载/镜像
+.RE
+.SH FILES
+.I ~/.config/organize/rules.conf
+.RS
+User rules file
+.RE
+.I /usr/share/organize/rules.conf.default
+.RS
+System default rules
+.RE
+.SH AUTHOR
+Written by Your Name <your.email@example.com>
+.SH LICENSE
+MIT

@@ -1,0 +1,20 @@
+# Maintainer: Your Name <your.email@example.com>
+pkgname=organize-bin
+pkgver=2.0.0
+pkgrel=1
+pkgdesc="File organizer by extension (precompiled binary package)"
+arch=('any')
+url="https://github.com/yourusername/organize"
+license=('MIT')
+depends=('bash' 'coreutils')
+source=("organize-$pkgver.tar.gz::https://github.com/yourusername/organize/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+provides=("organize")
+conflicts=("organize")
+
+package() {
+  cd "$srcdir/organize-$pkgver"
+  install -Dm755 src/organize.sh "$pkgdir/usr/bin/organize"
+  install -Dm644 config/rules.conf.example "$pkgdir/usr/share/organize/rules.conf.default"
+  install -Dm644 man/organize.1 "$pkgdir/usr/share/man/man1/organize.1"
+}
