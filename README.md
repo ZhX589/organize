@@ -1,7 +1,7 @@
 # organize – 文件自动整理工具
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build](https://github.com/ZhX589/organize/actions/workflows/build.yml/badge.svg?branch=v2.0.9)](https://github.com/ZhX589/organize/actions/workflows/build.yml)
+[![Build](https://github.com/ZhX589/organize/actions/workflows/build.yml/badge.svg?branch=v2.1.0)](https://github.com/ZhX589/organize/actions/workflows/build.yml)
 [![Made with Bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/)
 [![Platform](https://img.shields.io/badge/platform-Linux-blue.svg)](https://www.linux.org/)
 [![GitHub stars](https://img.shields.io/github/stars/ZhX589/organize?style=social)](https://github.com/ZhX589/organize/stargazers)

@@ -3,11 +3,11 @@ set -eo pipefail  # 移除 -u，改用更宽松的错误处理
 
 # ============================================
 # organize - 文件自动整理工具
-# 版本: 2.0.9
+# 版本: 2.1.0
 # ============================================
 
 readonly SCRIPT_NAME="organize"
-readonly VERSION="2.0.9"
+readonly VERSION="2.1.0"
 
 # 配置文件路径（遵循 XDG 规范）
 : "${XDG_CONFIG_HOME:=$HOME/.config}"
@@ -121,10 +121,13 @@ load_rules() {
         return
     fi
 
-    while IFS=: read -r extensions dest; do
-        [[ "$extensions" =~ ^[[:space:]]*# ]] && continue
-        [[ -z "$extensions" ]] && continue
+    while IFS= read -r line; do
+        line="${line#"${line%%[![:space:]]*}"}"
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "$line" ]] && continue
 
+        local extensions="${line%%:*}"
+        local dest="${line#$extensions:}"
         extensions=$(echo "$extensions" | xargs)
         dest=$(echo "$dest" | xargs)
         [[ -z "$extensions" || -z "$dest" ]] && continue
@@ -133,7 +136,11 @@ load_rules() {
         for ext in "${ext_array[@]}"; do
             ext=$(echo "$ext" | xargs)
             if [[ -n "$ext" ]]; then
-                RULES["$ext"]="$HOME/$dest"
+                if [[ "$dest" = /* ]]; then
+                    RULES["$ext"]="$dest"
+                else
+                    RULES["$ext"]="$HOME/$dest"
+                fi
             fi
         done
     done < "$RULES_FILE"
@@ -154,9 +161,13 @@ show_rules() {
     fi
 
     local current_category=""
-    while IFS=: read -r extensions dest; do
-        [[ "$extensions" =~ ^[[:space:]]*# ]] && continue
-        [[ -z "$extensions" ]] && continue
+    while IFS= read -r line; do
+        line="${line#"${line%%[![:space:]]*}"}"
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "$line" ]] && continue
+        
+        local extensions="${line%%:*}"
+        local dest="${line#$extensions:}"
         dest=$(echo "$dest" | xargs)
         category=$(echo "$dest" | cut -d'/' -f1)
         if [[ "$category" != "$current_category" ]]; then
@@ -180,20 +191,26 @@ add_rule() {
         return 1
     fi
 
-    if grep -q "^$extensions:" "$RULES_FILE" 2>/dev/null; then
+    local escaped_ext=$(printf '%s' "$extensions" | sed 's/[[:punct:]]/\\&/g')
+    if grep -q "^$escaped_ext:" "$RULES_FILE" 2>/dev/null; then
         log_warn "规则 '$extensions' 已存在"
         read -p "是否覆盖? (y/N): " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             return 0
         fi
-        sed -i "/^$extensions:/d" "$RULES_FILE"
+        sed -i "/^$escaped_ext:/d" "$RULES_FILE"
     fi
 
     echo "$extensions:$dest_dir" >> "$RULES_FILE"
     log_info "已添加规则: $extensions → $dest_dir"
 
-    local full_path="$HOME/$dest_dir"
+    local full_path
+    if [[ "$dest_dir" = /* ]]; then
+        full_path="$dest_dir"
+    else
+        full_path="$HOME/$dest_dir"
+    fi
     if [[ ! -d "$full_path" ]]; then
         read -p "是否创建目录 '$full_path'? (Y/n): " -n 1 -r
         echo
@@ -212,8 +229,9 @@ remove_rule() {
         return 1
     fi
 
-    if grep -q "^$extensions:" "$RULES_FILE" 2>/dev/null; then
-        sed -i "/^$extensions:/d" "$RULES_FILE"
+    local escaped_ext=$(printf '%s' "$extensions" | sed 's/[[:punct:]]/\\&/g')
+    if grep -q "^$escaped_ext:" "$RULES_FILE" 2>/dev/null; then
+        sed -i "/^$escaped_ext:/d" "$RULES_FILE"
         log_info "已删除规则: $extensions"
     else
         log_error "未找到规则: $extensions"
@@ -347,10 +365,14 @@ organize_directory() {
         [[ "$filename" == .* ]] && continue
 
         local ext=""
-        # 安全地获取扩展名
         if [[ "$filename" == *.* ]]; then
-            ext="${filename##*.}"
-            ext="${ext,,}"  # 转小写
+            local name_part="${filename%.*}"
+            if [[ "$name_part" == *.* ]]; then
+                ext="${name_part##*.}"
+            else
+                ext="${filename##*.}"
+            fi
+            ext="${ext,,}"
         fi
         
         local dest_dir=""
@@ -524,6 +546,12 @@ main() {
                 exit 0
                 ;;
             --add)
+                if [[ -z "${2:-}" || -z "${3:-}" ]]; then
+                    log_error "缺少参数"
+                    echo "用法: organize --add <扩展名> <目标目录>"
+                    echo "示例: organize --add iso 下载/镜像"
+                    exit 1
+                fi
                 add_rule "$2" "$3"
                 exit 0
                 ;;
